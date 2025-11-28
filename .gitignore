@@ -1,0 +1,30 @@
+# node_modules (never commit)
+node_modules/
+**/node_modules/
+
+# nnUNet model
+detection/models/
+
+# records
+records/
+storage/records/
+
+# dist output
+dist/
+**/dist/
+
+# env files
+.env
+.env.*
+*.env
+
+# logs
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# editor junk
+.DS_Store
+.vscode
+.idea

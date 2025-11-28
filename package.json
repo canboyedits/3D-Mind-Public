@@ -1,0 +1,19 @@
+{
+  "name": "3d-mind",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm dev:all",
+    "dev:all": "pnpm dev:frontend & pnpm dev:backend & pnpm dev:express",
+    "dev:frontend": "pnpm -C apps/3d-mind dev",
+    "dev:backend": "pnpm detection:backend",
+    "dev:express": "pnpm -C apps/backend dev",
+    "build": "pnpm -C apps/3d-mind build && pnpm -C apps/backend build && pnpm detection:backend",
+    "preview": "pnpm -C apps/3d-mind preview",
+    "detection:backend": "cd detection && python server.py",
+    "detection:backend:dev": "cd detection && python -m uvicorn server:app --reload --host 0.0.0.0 --port 8000"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.12.1"
+}
