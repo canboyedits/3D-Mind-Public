@@ -1,0 +1,16 @@
+# nnUNet model
+detection/models/
+
+# dist output
+dist/
+**/dist/
+
+# env files
+.env
+.env.*
+*.env
+
+# editor junk
+.DS_Store
+.vscode
+.idea
