@@ -49,10 +49,20 @@ type FileValidationResult = {
     T2?: File;
     T1ce?: File;
   };
+  isSingleFile?: boolean; // Flag to indicate single file upload
 };
 
 /**
+ * Checks if a file is a valid NIfTI file (.nii or .nii.gz)
+ */
+function isNiftiFile(file: File): boolean {
+  const fileName = file.name.toLowerCase();
+  return fileName.endsWith('.nii') || fileName.endsWith('.nii.gz');
+}
+
+/**
  * Validates that a folder contains exactly one file for each required pattern
+ * OR accepts a single .nii/.nii.gz file for view-only mode
  * @param files - Array of files from the dropped folder
  * @returns Validation result with separated files or error message
  */
@@ -60,11 +70,22 @@ function validateFolderFiles(files: File[]): FileValidationResult {
   const result: FileValidationResult = {
     isValid: false,
     files: {},
+    isSingleFile: false,
   };
 
   // Check if any files were provided
   if (!files || files.length === 0) {
     result.error = 'No files found in the folder';
+    return result;
+  }
+
+  // Check for single NIfTI file upload (view-only mode)
+  if (files.length === 1 && isNiftiFile(files[0])) {
+    result.isValid = true;
+    result.isSingleFile = true;
+    result.files = {
+      flair: files[0], // Store as flair for consistency
+    };
     return result;
   }
 
@@ -134,13 +155,13 @@ interface DropZoneProps {
   title?: string;
   subtitle?: string;
   description?: string;
-  onValidationSuccess?: (files: FileValidationResult['files']) => void;
+  onValidationSuccess?: (files: FileValidationResult['files'], isSingleFile?: boolean) => void;
 }
 
 export default function DropZone({
   title = 'Upload MRI Scans',
   subtitle = 'Folder Upload',
-  description = 'Drop a folder that contains exactly one file per sequence: _flair, _T1, _T2, _T1ce',
+  description = 'Drop a folder that contains exactly one file per sequence: _flair, _T1, _T2, _T1ce, or drop a single .nii/.nii.gz file for view-only mode',
   onValidationSuccess,
 }: DropZoneProps) {
   const [isDragging, setIsDragging] = useState(false);
@@ -185,12 +206,16 @@ export default function DropZone({
       }
 
       // Show success message when validation succeeds
-      setSuccessMessage('All required files found and validated successfully!');
+      if (result.isSingleFile) {
+        setSuccessMessage('Single NIfTI file validated successfully! This will be used for view-only mode.');
+      } else {
+        setSuccessMessage('All required files found and validated successfully!');
+      }
       setErrorMessage(null);
       
       // Call the callback if provided
       if (onValidationSuccess) {
-        onValidationSuccess(result.files);
+        onValidationSuccess(result.files, result.isSingleFile);
       }
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'An unexpected error occurred');
@@ -431,24 +456,40 @@ export default function DropZone({
                 Drag & Drop anywhere on the screen
               </Typography>
               <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
-                or choose a folder manually
+                or choose a folder/file manually
               </Typography>
-              <Button
-                size="large"
-                variant="contained"
-                component="label"
-                startIcon={<Folder />}
-              >
-                Select Folder
-                <input
-                  type="file"
-                  hidden
-                  // @ts-expect-error - webkitdirectory is a valid HTML attribute but not in TypeScript types
-                  webkitdirectory=""
-                  multiple
-                  onChange={handleFileInput}
-                />
-              </Button>
+              <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', justifyContent: 'center' }}>
+                <Button
+                  size="large"
+                  variant="contained"
+                  component="label"
+                  startIcon={<Folder />}
+                >
+                  Select Folder
+                  <input
+                    type="file"
+                    hidden
+                    // @ts-expect-error - webkitdirectory is a valid HTML attribute but not in TypeScript types
+                    webkitdirectory=""
+                    multiple
+                    onChange={handleFileInput}
+                  />
+                </Button>
+                <Button
+                  size="large"
+                  variant="outlined"
+                  component="label"
+                  startIcon={<CloudUpload />}
+                >
+                  Select File
+                  <input
+                    type="file"
+                    hidden
+                    accept=".nii,.nii.gz"
+                    onChange={handleFileInput}
+                  />
+                </Button>
+              </Box>
             </>
           )}
         </Box>

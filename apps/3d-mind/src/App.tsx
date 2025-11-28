@@ -1,4 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import Upload from './pages/Upload';
+import Link from './pages/Link';
 import './App.css';
 
 function App() {
@@ -6,6 +8,8 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Navigate to="/upload" replace />} />
+        <Route path="/upload" element={<Upload />} />
+        <Route path="/link" element={<Link />} />
       </Routes>
     </BrowserRouter>
   );
