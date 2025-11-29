@@ -41,11 +41,12 @@ export default function ViewScan() {
   // UI controls state
   const [maskVisible, setMaskVisible] = useState(true);
   const [brainOpacity, setBrainOpacity] = useState(100);
-  const [maskOpacity, setMaskOpacity] = useState(100);
+  const [maskOpacity, setMaskOpacity] = useState(10); // Default to 10% for tumor visibility
   const [brainPreset, setBrainPreset] = useState<BrainPreset>('skin');  // Default to skin for solid look
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  const [theme, setTheme] = useState<'dark' | 'light'>('light'); // Default to light theme
   const [showControls, setShowControls] = useState(true);
   const [renderMode, setRenderMode] = useState<RenderMode>('accuracy');
+  const [autoRotate, setAutoRotate] = useState(false);
 
   // Clipping planes
   const [clipX, setClipX] = useState<[number, number]>([0, 100]);
@@ -131,7 +132,11 @@ export default function ViewScan() {
       viewerRef.current = viewer;
       setMaskVisible(viewer.getMaskVisible());
       setBrainOpacity(viewer.getBrainOpacity() * 100);
-      setMaskOpacity(viewer.getMaskOpacity() * 100);
+      
+      // Set initial mask opacity to 10% (our UI default)
+      viewer.setMaskOpacity(0.1);
+      setMaskOpacity(10);
+      
       setViewerReady(true);
     } catch (err) {
       console.error('Error initializing VTK viewer:', err);
@@ -246,6 +251,13 @@ export default function ViewScan() {
     setClipZ([0, 100]);
     if (viewerRef.current) {
       viewerRef.current.setClipPlanes({ x: [0, 100], y: [0, 100], z: [0, 100] });
+    }
+  };
+
+  const handleAutoRotateChange = (enabled: boolean) => {
+    setAutoRotate(enabled);
+    if (viewerRef.current) {
+      viewerRef.current.setAutoRotate(enabled);
     }
   };
 
@@ -467,9 +479,12 @@ export default function ViewScan() {
         onResetClipping={handleResetClipping}
         theme={theme}
         showControls={showControls}
+        autoRotate={autoRotate}
+        onAutoRotateChange={handleAutoRotateChange}
         tumorData={recordData?.tumor as { volume_cc?: number; hemisphere?: string; midline_shift_mm?: number } | undefined}
         hasMask={!!recordData?.maskUrl}
       />
     </Box>
   );
 }
+  

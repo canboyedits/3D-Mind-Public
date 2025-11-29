@@ -25,7 +25,7 @@ export interface ScanViewerOptions {
 
 export interface ScanData {
   flairUrl: string;
-  maskUrl: string;
+  maskUrl?: string; // Optional for view-only mode
   metadataUrl?: string;
 }
 
@@ -54,6 +54,8 @@ export interface ScanViewer {
   getRenderMode: () => RenderMode;
   resetCamera: () => void;
   setView: (view: 'front' | 'back' | 'left' | 'right' | 'top' | 'bottom' | 'isometric') => void;
+  setAutoRotate: (enabled: boolean) => void;
+  getAutoRotate: () => boolean;
   destroy: () => void;
   getDimensions: () => { x: number; y: number; z: number };
 }
@@ -534,6 +536,58 @@ class SmoothZoomHandler {
 }
 
 // ============================================================================
+// AUTO-ROTATE HANDLER
+// ============================================================================
+
+class AutoRotateHandler {
+  private rafId: number | null = null;
+  private isRotating = false;
+  private rotationSpeed = 0.3; // degrees per frame
+
+  constructor(
+    private camera: any,
+    private renderer: any,
+    private renderThrottler: RenderThrottler,
+    private lodManager: LODStateManager
+  ) {}
+
+  start(): void {
+    if (this.isRotating) return;
+    this.isRotating = true;
+    this.lodManager.setAutoRotating(true);
+    this.animate();
+  }
+
+  stop(): void {
+    this.isRotating = false;
+    this.lodManager.setAutoRotating(false);
+    if (this.rafId !== null) {
+      cancelAnimationFrame(this.rafId);
+      this.rafId = null;
+    }
+  }
+
+  isActive(): boolean {
+    return this.isRotating;
+  }
+
+  private animate = (): void => {
+    if (!this.isRotating) return;
+
+    // Rotate camera around the Z axis (azimuth)
+    this.camera.azimuth(this.rotationSpeed);
+    this.renderer.resetCameraClippingRange();
+    this.renderThrottler.requestRender();
+
+    this.rafId = requestAnimationFrame(this.animate);
+  };
+
+  destroy(): void {
+    this.stop();
+  }
+}
+
+// ============================================================================
 // LOD STATE MANAGER WITH RENDER MODE SUPPORT
 // ============================================================================
 
@@ -543,6 +597,7 @@ class LODStateManager {
   private qualityTimeout: ReturnType<typeof setTimeout> | null = null;
   private isInteracting = false;
   private renderMode: RenderMode = 'accuracy';
+  private isAutoRotating = false;
 
   constructor(
     private systems: TripleLODSystem[],
@@ -551,6 +606,9 @@ class LODStateManager {
 
   setRenderMode(mode: RenderMode): void {
     this.renderMode = mode;
+    
+    // Don't change LOD if auto-rotating
+    if (this.isAutoRotating) return;
     
     if (mode === 'performance') {
       // In performance mode, use 'normal' LOD as the best quality (half-res)
@@ -586,7 +644,41 @@ class LODStateManager {
     return this.renderMode;
   }
 
+  setAutoRotating(rotating: boolean): void {
+    this.isAutoRotating = rotating;
+    
+    if (rotating) {
+      // When starting auto-rotate, clear timeouts and lock to appropriate quality
+      this.clearTimeouts();
+      this.isInteracting = false;
+      
+      if (this.renderMode === 'performance') {
+        // Performance mode: use normal (half-res)
+        this.setLevel('normal');
+        for (const system of this.systems) {
+          system.property.setShade(false);
+          system.property.setAmbient(0.8);
+          system.property.setDiffuse(0.2);
+          system.property.setSpecular(0.0);
+        }
+      } else {
+        // Accuracy mode: use quality (full-res)
+        this.setLevel('quality');
+        for (const system of this.systems) {
+          system.property.setShade(true);
+          system.property.setAmbient(0.15);
+          system.property.setDiffuse(0.7);
+          system.property.setSpecular(0.25);
+        }
+      }
+      this.renderThrottler.forceRender();
+    }
+  }
+
   startInteraction(): void {
+    // Don't change LOD if auto-rotating
+    if (this.isAutoRotating) return;
+    
     if (this.isInteracting) return;
     this.isInteracting = true;
 
@@ -598,6 +690,9 @@ class LODStateManager {
   }
 
   endInteraction(): void {
+    // Don't change LOD if auto-rotating
+    if (this.isAutoRotating) return;
+    
     if (!this.isInteracting) return;
     this.isInteracting = false;
 
@@ -727,7 +822,7 @@ export async function drawScan(
   // State
   let currentPreset: BrainPreset = 'skin';
   let brainOpacity = 1.0;
-  let maskOpacity = 1.0;
+  let maskOpacity = 0.1; // Default to 10% for better tumor visibility
   let maskVisible = false;
   let clipPlanes: ClipPlanes = { x: [0, 100], y: [0, 100], z: [0, 100] };
 
@@ -787,6 +882,10 @@ export async function drawScan(
 
   const createMaskSystem = async (): Promise<void> => {
     if (maskSystem) return;
+    if (!maskUrl) {
+      console.log('No mask URL provided - view-only mode');
+      return;
+    }
     console.log('Loading mask volume with 3 LOD levels (lazy)...');
     maskVolumeData = await loadMultiResVolumeData(maskUrl);
     maskSystem = createTripleLODSystem(
@@ -816,6 +915,9 @@ export async function drawScan(
     () => lodManager.startInteraction(),
     () => lodManager.endInteraction()
   );
+
+  // Auto-rotate handler (needs lodManager)
+  const autoRotateHandler = new AutoRotateHandler(camera, renderer, throttler, lodManager);
 
   // Wheel event handler
   const wheelHandler = (event: WheelEvent): void => {
@@ -959,6 +1061,18 @@ export async function drawScan(
       throttler.forceRender();
     },
 
+    setAutoRotate(enabled: boolean): void {
+      if (enabled) {
+        autoRotateHandler.start();
+      } else {
+        autoRotateHandler.stop();
+      }
+    },
+
+    getAutoRotate(): boolean {
+      return autoRotateHandler.isActive();
+    },
+
     getDimensions(): { x: number; y: number; z: number } {
       return { ...dimensions };
     },
@@ -968,6 +1082,7 @@ export async function drawScan(
       lodManager.destroy();
       throttler.cancel();
       zoomHandler.cancel();
+      autoRotateHandler.destroy();
 
       // Remove wheel listener
       if (canvasEl) {

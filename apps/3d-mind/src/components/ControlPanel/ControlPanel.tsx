@@ -18,6 +18,7 @@ import {
   VisibilityOff as VisibilityOffIcon,
   Speed as PerformanceIcon,
   HighQuality as AccuracyIcon,
+  Autorenew as AutoRotateIcon,
 } from '@mui/icons-material';
 import type { BrainPreset, RenderMode, ScanViewer } from '@3dmind/core';
 
@@ -59,6 +60,10 @@ export interface ControlPanelProps {
   // Panel visibility
   showControls: boolean;
   
+  // Auto-rotate
+  autoRotate: boolean;
+  onAutoRotateChange: (enabled: boolean) => void;
+  
   // Tumor data (optional)
   tumorData?: {
     volume_cc?: number;
@@ -91,6 +96,8 @@ export default function ControlPanel({
   onResetClipping,
   theme,
   showControls,
+  autoRotate,
+  onAutoRotateChange,
   tumorData,
   hasMask = true, // Default to true for backward compatibility
 }: ControlPanelProps) {
@@ -104,6 +111,10 @@ export default function ControlPanel({
 
   const handleToggleMask = () => {
     onMaskVisibleChange(!maskVisible);
+  };
+
+  const handleToggleAutoRotate = () => {
+    onAutoRotateChange(!autoRotate);
   };
 
   const handleBrainOpacityChange = (_: Event, value: number | number[]) => {
@@ -209,6 +220,36 @@ export default function ControlPanel({
               }}
             />
           </Box>
+        </Box>
+
+        <Divider sx={{ borderColor: borderColor, my: 2 }} />
+
+        {/* Auto-Rotate Section */}
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="subtitle2" sx={{ color: textSecondary, mb: 1.5, textTransform: 'uppercase', fontSize: '0.7rem', letterSpacing: 1 }}>
+            Auto-Rotate
+          </Typography>
+
+          <FormControlLabel
+            control={
+              <Switch
+                checked={autoRotate}
+                onChange={handleToggleAutoRotate}
+                disabled={!viewerReady}
+                sx={{
+                  '& .MuiSwitch-switchBase.Mui-checked': { color: accent },
+                  '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { backgroundColor: accent },
+                }}
+              />
+            }
+            label={
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <AutoRotateIcon sx={{ fontSize: 18, color: autoRotate ? accent : textSecondary }} />
+                <Typography variant="body2">Rotate Clockwise</Typography>
+              </Box>
+            }
+            sx={{ color: textPrimary }}
+          />
         </Box>
 
         {/* Visibility Section - Only show if mask is available */}

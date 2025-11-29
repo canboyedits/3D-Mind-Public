@@ -192,6 +192,7 @@ export default function FillForm({
             sx={{
               '& .MuiOutlinedInput-root': {
                 borderRadius: 2,
+                backgroundColor: 'white',
               },
             }}
           />
@@ -215,6 +216,7 @@ export default function FillForm({
             sx={{
               '& .MuiOutlinedInput-root': {
                 borderRadius: 2,
+                backgroundColor: 'white',
               },
             }}
           />
@@ -229,6 +231,7 @@ export default function FillForm({
                 minWidth: { xs: '100%', sm: 150 },
                 '& .MuiOutlinedInput-root': {
                   borderRadius: 2,
+                  backgroundColor: 'white',
                 },
               }}
             >
@@ -262,6 +265,7 @@ export default function FillForm({
               sx={{
                 '& .MuiOutlinedInput-root': {
                   borderRadius: 2,
+                  backgroundColor: 'white',
                 },
               }}
             />
