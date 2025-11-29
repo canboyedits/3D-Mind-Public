@@ -15,11 +15,13 @@ import {
   LightMode as LightModeIcon,
   DarkMode as DarkModeIcon,
   Tune as TuneIcon,
+  SmartToy as SmartToyIcon,
 } from '@mui/icons-material';
 import EnterDOB from '../components/Cards/EnterDOB';
 import ControlPanel from '../components/ControlPanel';
 import { fetchRecord, type RecordResponse, API_BASE_URL } from '../utils/api';
 import { drawScan, type ScanViewer, type BrainPreset, type RenderMode } from '@3dmind/core';
+import { ChatbotUI } from '@AIchat/aichatbot';
 
 export default function ViewScan() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -30,6 +32,7 @@ export default function ViewScan() {
   const [loading, setLoading] = useState(false);
   const [showDOBEntry, setShowDOBEntry] = useState(false);
   const [showIncorrectDOBAlert, setShowIncorrectDOBAlert] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(false);
 
   // VTK viewer state
   const containerRef = useRef<HTMLDivElement>(null);
@@ -388,6 +391,12 @@ export default function ViewScan() {
                 <TuneIcon />
               </IconButton>
             </Tooltip>
+
+            <Tooltip title={isChatOpen ? 'Hide AI Assistant' : 'Open AI Assistant'}>
+              <IconButton onClick={() => setIsChatOpen((prev) => !prev)} sx={{ color: accent }}>
+                <SmartToyIcon />
+              </IconButton>
+            </Tooltip>
           </Box>
         </Box>
 
@@ -400,6 +409,8 @@ export default function ViewScan() {
             left: 0,
             right: 0,
             bottom: 0,
+            transition: 'filter 0.3s ease',
+            filter: isChatOpen ? 'brightness(0.92)' : 'none',
           }}
         />
 
@@ -452,6 +463,42 @@ export default function ViewScan() {
             <Typography variant="body2" sx={{ color: '#f87171' }}>
               {viewerError}
             </Typography>
+          </Box>
+        )}
+
+        {isChatOpen && (
+          <Box
+            sx={{
+              position: 'absolute',
+              top: { xs: 80, md: 88 },
+              right: { xs: 16, md: 24 },
+              bottom: { xs: 16, md: 24 },
+              width: { xs: 'calc(100% - 32px)', md: '33.333%' },
+              minWidth: 320,
+              maxWidth: 560,
+              display: 'flex',
+              flexDirection: 'column',
+              borderRadius: 3,
+              overflow: 'hidden',
+              background: bgSecondary,
+              border: `1px solid ${borderColor}`,
+              boxShadow: '0 20px 40px rgba(0, 0, 0, 0.35)',
+              zIndex: 25,
+              transition: 'all 0.3s ease',
+              '& > *': {
+                width: '100% !important',
+                maxWidth: '100% !important',
+              },
+            }}
+          >
+            <ChatbotUI
+              recordUid={recordData?.recordId ?? uid ?? undefined}
+              contextHint={recordData?.patient?.name ? `Patient: ${recordData.patient.name}` : undefined}
+              apiBaseUrl={`${API_BASE_URL}/api`}
+              onClose={() => setIsChatOpen(false)}
+              patientName={recordData?.patient?.name}
+              patientDob={recordData?.patient?.dateOfBirth}
+            />
           </Box>
         )}
       </Box>
